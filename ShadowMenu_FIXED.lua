@@ -496,16 +496,16 @@ end)
 print("[ShadowMenu] Loaded. Press INSERT to toggle.")
 
 -- ════════════════════════════════════════════════════════════════════
--- ✅ AIMBOT FUNCIONAL (Integrado com FOV, WALLCK, FIRELOCK)
+-- ✅ AIMBOT FUNCIONAL + FOV CIRCLE (Integrado)
 -- ════════════════════════════════════════════════════════════════════
 
 local Camera = workspace.CurrentCamera
-local fovCircle = nil
 
--- ✅ CRIAR FOV CIRCLE UMA ÚNICA VEZ (invisível no início)
+-- ✅ Criar FOV Circle UMA VEZ no início (invisível)
+local fovCircle = nil
 pcall(function()
     fovCircle = Drawing.new("Circle")
-    fovCircle.Visible = false  -- Começa invisível
+    fovCircle.Visible = false
     fovCircle.Thickness = 2
     fovCircle.Filled = false
     fovCircle.Transparency = 1
@@ -520,119 +520,120 @@ local function getFovColor()
     return Color3.fromRGB(r, g, b)
 end
 
--- Obter alvo mais próximo dentro do FOV
-local function getClosestTargetInFOV()
+-- Lista de nomes de armas
+local WEAPON_NAMES = {"arma", "gun", "fall", "letal", "g17", "pistola", "pistolas"}
+
+local function isWeapon(tool)
+    local name = tool.Name:lower()
+    for _,w in ipairs(WEAPON_NAMES) do
+        if name:find(w) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Obter alvo mais próximo
+local function getClosestTarget()
     local closestDist = math.huge
     local target = nil
-    
-    local myChar = LocalPlayer.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return nil end
-    
     local cam = workspace.CurrentCamera
     local screenCenter = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
     local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
     
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        
-        local char = plr.Character
-        if not char then continue end
-        
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        
-        -- Obter parte do corpo selecionada (FIRELOCK)
-        local targetPart = char:FindFirstChild(state.firelockPart) or char:FindFirstChild("HumanoidRootPart")
-        if not targetPart then continue end
-        
-        -- ✅ WALLCK: Verificar se há obstáculo entre o player e o inimigo
-        if state.toggles.WALLCK then
-            local rayParams = RaycastParams.new()
-            rayParams.FilterDescendantsInstances = {myChar, char}
-            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local targetPart = plr.Character:FindFirstChild(state.firelockPart) or plr.Character:FindFirstChild("HumanoidRootPart")
+            if not targetPart then continue end
             
-            local direction = (targetPart.Position - myHRP.Position)
-            local rayResult = workspace:Raycast(myHRP.Position, direction, rayParams)
+            -- ✅ WALLCK: Verificar obstáculo
+            if state.toggles.WALLCK then
+                local myChar = LocalPlayer.Character
+                local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                if myHRP then
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterDescendantsInstances = {myChar, plr.Character}
+                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                    local direction = (targetPart.Position - myHRP.Position)
+                    local rayResult = workspace:Raycast(myHRP.Position, direction, rayParams)
+                    if rayResult then continue end
+                end
+            end
             
-            -- Se houver colisão (parede/obstáculo), ignorar este inimigo
-            if rayResult then continue end
-        end
-        
-        -- Verificar se está na tela e dentro do FOV
-        local screenPos, onScreen = cam:WorldToViewportPoint(targetPart.Position)
-        if not onScreen or screenPos.Z <= 0 then continue end
-        
-        local dist2D = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-        
-        -- ✅ Verificar se está dentro do FOV (círculo)
-        if dist2D <= fovRadius and dist2D < closestDist then
-            closestDist = dist2D
-            target = plr
+            local screenPos, onScreen = cam:WorldToViewportPoint(targetPart.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                -- ✅ Verificar FOV
+                if dist <= fovRadius and dist < closestDist then
+                    closestDist = dist
+                    target = plr
+                end
+            end
         end
     end
-    
     return target
 end
 
--- ✅ AIMLOCK PRINCIPAL
+local function getWeapon()
+    if not LocalPlayer.Character then return nil end
+    for _,tool in ipairs(LocalPlayer.Character:GetChildren()) do
+        if tool:IsA("Tool") and isWeapon(tool) then
+            if tool:FindFirstChild("Handle") then
+                return tool.Handle
+            else
+                for _,part in ipairs(tool:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        return part
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- ✅ Loop principal AIMBOT
 RunService.RenderStepped:Connect(function()
     if not fovCircle then return end
     
     local cam = workspace.CurrentCamera
-    local myChar = LocalPlayer.Character
     
-    -- ✅ ATUALIZAR FOV CIRCLE QUANDO AIMLOCK ATIVO
+    -- ✅ Atualizar FOV Circle quando AIMLOCK ativo
     if state.toggles.AIMLOCK then
         local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
         
         pcall(function()
-            -- Sempre atualizar posição, raio e cor
             fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
             fovCircle.Radius = fovRadius
             fovCircle.Color = getFovColor()
-            -- ✅ Visibility controlada APENAS por SHOWFOV
+            -- ✅ Mostrar APENAS se SHOWFOV ativo
             fovCircle.Visible = state.toggles.SHOWFOV
         end)
+        
+        -- ✅ AIMLOCK: Grudar no alvo
+        local aimTarget = getClosestTarget()
+        if aimTarget and aimTarget.Character and aimTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPos = aimTarget.Character.HumanoidRootPart.Position + Vector3.new(0,1.5,0)
+            
+            -- 1. Camera mira
+            cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
+            
+            -- 2. Player olha
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, Vector3.new(targetPos.X, LocalPlayer.Character.HumanoidRootPart.Position.Y, targetPos.Z))
+            end
+            
+            -- 3. Arma aponta
+            local gun = getWeapon()
+            if gun then
+                gun.CFrame = CFrame.new(gun.Position, targetPos)
+            end
+        end
     else
         -- Se AIMLOCK desativado, ocultar FOV
         pcall(function()
             fovCircle.Visible = false
         end)
-    end
-    
-    -- ✅ AIMLOCK: Grude no alvo quando ativo
-    if state.toggles.AIMLOCK then
-        local target = getClosestTargetInFOV()
-        
-        if target and target.Character then
-            local targetChar = target.Character
-            
-            -- Obter parte alvo
-            local targetPart = targetChar:FindFirstChild(state.firelockPart) 
-                or targetChar:FindFirstChild("HumanoidRootPart")
-            
-            if targetPart and myChar and myChar:FindFirstChild("HumanoidRootPart") then
-                local targetPos = targetPart.Position + Vector3.new(0, 1.5, 0)
-                local myHRP = myChar.HumanoidRootPart
-                
-                -- 1. Camera mira no alvo
-                cam.CFrame = CFrame.new(cam.CFrame.Position, targetPos)
-                
-                -- 2. Player olha para o alvo
-                myHRP.CFrame = CFrame.new(myHRP.Position, Vector3.new(targetPos.X, myHRP.Position.Y, targetPos.Z))
-                
-                -- 3. Se tiver arma, aponta para o alvo
-                for _, tool in ipairs(myChar:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        local handle = tool:FindFirstChild("Handle")
-                        if handle then
-                            handle.CFrame = CFrame.new(handle.Position, targetPos)
-                        end
-                    end
-                end
-            end
-        end
     end
 end)
 

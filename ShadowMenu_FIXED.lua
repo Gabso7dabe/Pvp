@@ -502,10 +502,10 @@ print("[ShadowMenu] Loaded. Press INSERT to toggle.")
 local Camera = workspace.CurrentCamera
 local fovCircle = nil
 
--- Inicializar FOV Circle (Drawing)
+-- ✅ CRIAR FOV CIRCLE UMA ÚNICA VEZ (invisível no início)
 pcall(function()
     fovCircle = Drawing.new("Circle")
-    fovCircle.Visible = false
+    fovCircle.Visible = false  -- Começa invisível
     fovCircle.Thickness = 2
     fovCircle.Filled = false
     fovCircle.Transparency = 1
@@ -582,16 +582,24 @@ RunService.RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local myChar = LocalPlayer.Character
     
-    -- Atualizar FOV Circle (sempre que AIMLOCK ativo OU SHOWFOV ativo)
-    local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
-    
-    pcall(function()
-        -- ✅ FOV visível apenas quando SHOWFOV é true
-        fovCircle.Visible = state.toggles.SHOWFOV
-        fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-        fovCircle.Radius = fovRadius
-        fovCircle.Color = getFovColor()
-    end)
+    -- ✅ ATUALIZAR FOV CIRCLE QUANDO AIMLOCK ATIVO
+    if state.toggles.AIMLOCK then
+        local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
+        
+        pcall(function()
+            -- Sempre atualizar posição, raio e cor
+            fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+            fovCircle.Radius = fovRadius
+            fovCircle.Color = getFovColor()
+            -- ✅ Visibility controlada APENAS por SHOWFOV
+            fovCircle.Visible = state.toggles.SHOWFOV
+        end)
+    else
+        -- Se AIMLOCK desativado, ocultar FOV
+        pcall(function()
+            fovCircle.Visible = false
+        end)
+    end
     
     -- ✅ AIMLOCK: Grude no alvo quando ativo
     if state.toggles.AIMLOCK then

@@ -582,21 +582,16 @@ RunService.RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local myChar = LocalPlayer.Character
     
-    -- Atualizar FOV Circle (sempre que ativo)
-    if state.toggles.AIMLOCK or state.toggles.SHOWFOV then
-        local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
-        
-        pcall(function()
-            fovCircle.Visible = state.toggles.SHOWFOV
-            fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-            fovCircle.Radius = fovRadius
-            fovCircle.Color = getFovColor()
-        end)
-    else
-        pcall(function()
-            fovCircle.Visible = false
-        end)
-    end
+    -- Atualizar FOV Circle (sempre que AIMLOCK ativo OU SHOWFOV ativo)
+    local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
+    
+    pcall(function()
+        -- ✅ FOV visível apenas quando SHOWFOV é true
+        fovCircle.Visible = state.toggles.SHOWFOV
+        fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+        fovCircle.Radius = fovRadius
+        fovCircle.Color = getFovColor()
+    end)
     
     -- ✅ AIMLOCK: Grude no alvo quando ativo
     if state.toggles.AIMLOCK then

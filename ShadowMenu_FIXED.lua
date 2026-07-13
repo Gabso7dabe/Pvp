@@ -496,21 +496,12 @@ end)
 print("[ShadowMenu] Loaded. Press INSERT to toggle.")
 
 -- ════════════════════════════════════════════════════════════════════
--- ✅ AIMBOT FUNCIONAL + FOV CIRCLE (Integrado)
+-- ✅ AIMBOT FUNCIONAL + FOV CIRCLE
+-- FOV é criado AO ATIVAR AIMLOCK, destruído ao DESATIVAR
 -- ════════════════════════════════════════════════════════════════════
 
 local Camera = workspace.CurrentCamera
-
--- ✅ Criar FOV Circle UMA VEZ no início (invisível)
 local fovCircle = nil
-pcall(function()
-    fovCircle = Drawing.new("Circle")
-    fovCircle.Visible = false
-    fovCircle.Thickness = 2
-    fovCircle.Filled = false
-    fovCircle.Transparency = 1
-    fovCircle.Color = Color3.fromRGB(255, 255, 255)
-end)
 
 local function getFovColor()
     local hex = (state.fovColor or "#FFFFFF"):gsub("#", "")
@@ -594,21 +585,33 @@ end
 
 -- ✅ Loop principal AIMBOT
 RunService.RenderStepped:Connect(function()
-    if not fovCircle then return end
-    
     local cam = workspace.CurrentCamera
     
-    -- ✅ Atualizar FOV Circle quando AIMLOCK ativo
+    -- ✅ SE AIMLOCK ATIVADO
     if state.toggles.AIMLOCK then
-        local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
+        -- ✅ CRIAR FOV CIRCLE (se não existir)
+        if not fovCircle then
+            pcall(function()
+                fovCircle = Drawing.new("Circle")
+                fovCircle.Thickness = 2
+                fovCircle.Filled = false
+                fovCircle.Transparency = 1
+                fovCircle.Color = Color3.fromRGB(255, 255, 255)
+            end)
+        end
         
-        pcall(function()
-            fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-            fovCircle.Radius = fovRadius
-            fovCircle.Color = getFovColor()
-            -- ✅ Mostrar APENAS se SHOWFOV ativo
-            fovCircle.Visible = state.toggles.SHOWFOV
-        end)
+        -- ✅ ATUALIZAR FOV CIRCLE
+        if fovCircle then
+            local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
+            
+            pcall(function()
+                fovCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+                fovCircle.Radius = fovRadius
+                fovCircle.Color = getFovColor()
+                -- ✅ Mostrar APENAS se SHOWFOV ativo
+                fovCircle.Visible = state.toggles.SHOWFOV
+            end)
+        end
         
         -- ✅ AIMLOCK: Grudar no alvo
         local aimTarget = getClosestTarget()
@@ -630,10 +633,13 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Se AIMLOCK desativado, ocultar FOV
-        pcall(function()
-            fovCircle.Visible = false
-        end)
+        -- ✅ SE AIMLOCK DESATIVADO - DESTRUIR FOV CIRCLE
+        if fovCircle then
+            pcall(function()
+                fovCircle:Remove()
+            end)
+            fovCircle = nil
+        end
     end
 end)
 

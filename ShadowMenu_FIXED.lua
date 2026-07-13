@@ -524,7 +524,7 @@ local function isWeapon(tool)
     return false
 end
 
--- Obter alvo mais próximo
+-- ✅ CORRIGIDO: Obter alvo mais próximo (sem erro de nil Health)
 local function getClosestTarget()
     local closestDist = math.huge
     local target = nil
@@ -533,31 +533,40 @@ local function getClosestTarget()
     local fovRadius = (state.fov / 180) * (cam.ViewportSize.X / 2)
     
     for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-            local targetPart = plr.Character:FindFirstChild(state.firelockPart) or plr.Character:FindFirstChild("HumanoidRootPart")
-            if not targetPart then continue end
-            
-            -- ✅ WALLCK: Verificar obstáculo
-            if state.toggles.WALLCK then
-                local myChar = LocalPlayer.Character
-                local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-                if myHRP then
-                    local rayParams = RaycastParams.new()
-                    rayParams.FilterDescendantsInstances = {myChar, plr.Character}
-                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    local direction = (targetPart.Position - myHRP.Position)
-                    local rayResult = workspace:Raycast(myHRP.Position, direction, rayParams)
-                    if rayResult then continue end
-                end
-            end
-            
-            local screenPos, onScreen = cam:WorldToViewportPoint(targetPart.Position)
-            if onScreen then
-                local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                -- ✅ Verificar FOV
-                if dist <= fovRadius and dist < closestDist then
-                    closestDist = dist
-                    target = plr
+        if plr ~= LocalPlayer then
+            local char = plr.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                
+                -- ✅ Verifica tudo antes de usar
+                if hrp and hum and hum.Health > 0 then
+                    local targetPart = char:FindFirstChild(state.firelockPart) or hrp
+                    if targetPart then
+                        -- ✅ WALLCK: Verificar obstáculo
+                        if state.toggles.WALLCK then
+                            local myChar = LocalPlayer.Character
+                            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                            if myHRP then
+                                local rayParams = RaycastParams.new()
+                                rayParams.FilterDescendantsInstances = {myChar, char}
+                                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                                local direction = (targetPart.Position - myHRP.Position)
+                                local rayResult = workspace:Raycast(myHRP.Position, direction, rayParams)
+                                if rayResult then continue end
+                            end
+                        end
+                        
+                        local screenPos, onScreen = cam:WorldToViewportPoint(targetPart.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                            -- ✅ Verificar FOV
+                            if dist <= fovRadius and dist < closestDist then
+                                closestDist = dist
+                                target = plr
+                            end
+                        end
+                    end
                 end
             end
         end

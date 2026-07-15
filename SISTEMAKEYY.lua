@@ -10,7 +10,7 @@ local TweenService = game:GetService("TweenService")
 -- ══════════════════════════════════════════
 -- CONFIGURAÇÃO
 -- ══════════════════════════════════════════
-local VALID_KEY   = "Senha_778"       -- << MUDE AQUI A SUA KEY
+local VALID_KEY   = "123"       -- << MUDE AQUI A SUA KEY
 local MENU_URL    = "https://raw.githubusercontent.com/Gabso7dabe/Shadowpvp/main/SHADOWPVP.LUA"  -- << URL do menu
 
 -- ══════════════════════════════════════════
